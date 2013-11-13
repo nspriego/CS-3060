@@ -9,6 +9,8 @@
 #define TRUE (1)
 #define FALSE (0)
 
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 struct primecheck_data {
         int buffer[MAX_ITEMS];
         int count;
@@ -25,10 +27,12 @@ void *isPrimeConsumer(void *ptr) {
                                 return NULL;
                         }
                 }
-
+		
+		pthread_mutex_lock(&mutex);
                 number = data->buffer[next_out];
                 next_out = (next_out + 1) % MAX_ITEMS;
                 data->count--;
+		pthread_mutex_unlock(&mutex);
 #ifdef DEBUG_OUTPUT
                 fprintf(stdout, "buffer count to consume is %d\n", data->count);
 #endif /* DEBUG_OUTPUT */
@@ -71,9 +75,11 @@ int main() {
 
         while ( fscanf(stdin, "%d", &number) == 1 ) {
                 while ( data->count == MAX_ITEMS );
-                data->buffer[next_in] = number;
+                pthread_mutex_lock(&mutex);
+		data->buffer[next_in] = number;
                 next_in = (next_in + 1) % MAX_ITEMS;
                 data->count++;
+		pthread_mutex_unlock(&mutex);
 #ifdef DEBUG_OUTPUT
                 fprintf(stdout, "buffer count read is %d\n", data->count);
 #endif /* DEBUG_OUTPUT */
@@ -87,6 +93,8 @@ int main() {
         pthread_join(consumer, NULL);
 
         free(data);
+
+	pthread_mutex_destroy(&mutex);
 
         return 0;
 }
